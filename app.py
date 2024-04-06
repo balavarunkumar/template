@@ -4,7 +4,7 @@ import pandas as pd
 app = Flask(__name__)
 
 # Read the Excel file into a pandas DataFrame
-df = pd.read_csv(r"C:\Users\mbvar\Desktop\Folder\foldercs\news website\New folder\static\excel\simout_data.csv")
+df = pd.read_csv(simout_data.csv)
 
 # Route to serve the frontend HTML file
 @app.route('/')
