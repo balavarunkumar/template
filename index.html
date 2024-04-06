@@ -1,0 +1,197 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+  <title>Data Visualization</title>
+  <script src="https://d3js.org/d3.v6.min.js"></script>
+  <link href="https://cdn.jsdelivr.net/npm/tailwindcss/dist/tailwind.min.css" rel="stylesheet">
+  <style>
+    body {
+      background-image: url('background.jpg');
+      background-size: cover;
+      background-position: center;
+      background-attachment: fixed;
+      min-height: 100vh;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+    }
+
+    .container {
+      background-color: rgba(255, 255, 255, 0.8);
+      box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+      border-radius: 0.5rem;
+      padding: 1.25rem;
+      max-width: 1200px;
+      width: 80%;
+    }
+
+    .title {
+      font-size: 1.5rem;
+      font-weight: bold;
+      color: #333333;
+      margin-bottom: 1.25rem;
+      text-align: center;
+    }
+
+    .chart {
+      width: 100%;
+      height: 600px;
+      background-color: #ffffff;
+      box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+      border-radius: 0.5rem;
+      padding: 1.25rem;
+    }
+
+    .legend {
+      font-size: 0.875rem;
+      font-weight: bold;
+      margin-top: 1.25rem;
+    }
+
+    .legend-item {
+      display: inline-block;
+      margin-right: 1.25rem;
+    }
+
+    .legend-color {
+      display: inline-block;
+      width: 1rem;
+      height: 1rem;
+      margin-right: 0.5rem;
+      border-radius: 50%;
+    }
+
+    .axis text {
+      font-size: 0.75rem;
+    }
+
+    .axis path,
+    .axis line {
+      stroke: #333333;
+    }
+
+    .line {
+      stroke-width: 2px;
+      fill: none;
+    }
+
+    .variable-selector {
+      text-align: center;
+      margin-bottom: 1.25rem;
+    }
+
+    #variable {
+      display: inline-block;
+      margin-bottom: 0.625rem;
+    }
+  </style>
+</head>
+
+<body>
+  <div class="container">
+    <div class="title">Data Visualization Project</div>
+    <div class="variable-selector">
+      <label for="variable" class="mr-2 font-semibold">Select Variable:</label>
+      <select id="variable" class="border rounded py-1 px-2 bg-gray-100 hover:bg-gray-200 transition-colors">
+        <option value="TotalPower">Total Power</option>
+        <option value="Load">Load</option>
+        <option value="Diesel">Diesel</option>
+        <option value="Solar">Solar</option>
+        <option value="Wind">Wind</option>
+        <option value="RemainingPower">Remaining Power</option>
+        <option value="V2G">V2G</option>
+      </select>
+    </div>
+    <div class="chart"></div>
+    <div class="legend"></div>
+    <div class="zoom-instructions text-sm text-gray-600 mt-2">
+      <span>Zoom Instructions:</span>
+      <ul class="ml-4 list-disc">
+        <li>Scroll to zoom in/out</li>
+        <li>Click and drag to pan</li>
+      </ul>
+    </div>
+  </div>
+
+  <script>
+    // Fetch the data from the API endpoint
+    d3.json('/data')
+      .then(function (data) {
+        // Extract the relevant columns from the data
+        const times = data.map(d => d.Time);
+        const variables = ["TotalPower", "Load", "Diesel", "Solar", "Wind", "RemainingPower", "V2G"];
+
+        // Define the dimensions and margins of the chart
+        const margin = { top: 20, right: 20, bottom: 60, left: 60 };
+        const width = document.querySelector('.chart').offsetWidth - margin.left - margin.right;
+        const height = document.querySelector('.chart').offsetHeight - margin.top - margin.bottom;
+
+        // Create the SVG container
+        const svg = d3.select(".chart")
+          .append("svg")
+          .attr("width", width + margin.left + margin.right)
+          .attr("height", height + margin.top + margin.bottom)
+          .append("g")
+          .attr("transform", `translate(${margin.left}, ${margin.top})`);
+
+        // Create scales for the x and y axes
+        const x = d3.scaleLinear().domain([d3.min(times), d3.max(times)]).range([0, width]);
+        const y = d3.scaleLinear().domain([d3.min(data.map(d => d3.min(variables.map(v => d[v])))), d3.max(data.map(d => d3.max(variables.map(v => d[v]))))]).range([height, 0]);
+
+        // Create the x and y axes
+        const xAxis = d3.axisBottom(x).tickFormat(d3.format(".2f"));
+        const yAxis = d3.axisLeft(y);
+
+        // Append the x and y axes to the chart
+        svg.append("g")
+          .attr("class", "x axis")
+          .attr("transform", `translate(0, ${height})`)
+          .call(xAxis);
+
+        svg.append("g")
+          .attr("class", "y axis")
+          .call(yAxis);
+
+        // Add x-axis title
+        svg.append("text")
+          .attr("class", "x axis-title")
+          .attr("transform", `translate(${width / 2}, ${height + margin.bottom - 10})`)
+          .style("text-anchor", "middle")
+          .text("Time in Seconds");
+
+        // Create a line generator function
+        const line = d3.line()
+          .x((d, i) => x(times[i]))
+          .y((d, i) => y(d));
+
+        // Function to update chart based on selected variable
+        function updateChart(selectedVariable) {
+          // Remove existing lines
+          svg.selectAll(".line").remove();
+
+          // Append new line
+          svg.append("path")
+            .datum(data.map(d => d[selectedVariable]))
+            .attr("class", "line")
+            .attr("d", line)
+            .style("stroke", "#2196F3"); // Change stroke color as needed
+        }
+
+        // Event listener for variable selection change
+        d3.select("#variable").on("change", function () {
+          const selectedVariable = this.value;
+          updateChart(selectedVariable);
+        });
+
+        // Initially update chart with default selected variable
+        const defaultVariable = document.getElementById("variable").value;
+        updateChart(defaultVariable);
+      })
+      .catch(function (error) {
+        console.log('Error:', error);
+      });
+  </script>
+</body>
+
+</html>
