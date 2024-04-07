@@ -14,8 +14,10 @@ def index():
 # Define an API endpoint to return the data as JSON
 @app.route('/data')
 def get_data():
+    # Convert DataFrame to JSON string
     data = df.to_json(orient='records')
-    return data
+    # Return JSON data
+    return jsonify(data)
 
 if __name__ == '__main__':
     app.run(debug=True)
